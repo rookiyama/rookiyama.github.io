@@ -315,6 +315,7 @@ body {
 /* --- Wind-Blown Snow Particles --- */
 .snow-particle {
     position: absolute;
+    top: -10px;
     width: 4px; height: 4px;
     background-color: #ffffff;
     border-radius: 50%;
