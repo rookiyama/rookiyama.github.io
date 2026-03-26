@@ -99,9 +99,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (bgMusic && progressSlider) {
+        
+        // Function to dynamically fill the background track with neon blue
+        const updateProgressFill = (current, total) => {
+            const percentage = (current / total) * 100 || 0;
+            // Uses CSS linear-gradient to color the left side blue and the right side gray
+            progressSlider.style.background = `linear-gradient(to right, var(--neon-blue) ${percentage}%, rgba(255, 255, 255, 0.2) ${percentage}%)`;
+        };
+
         const initDuration = () => {
             progressSlider.max = Math.floor(bgMusic.duration);
             totalTimeEl.textContent = formatTime(bgMusic.duration);
+            updateProgressFill(bgMusic.currentTime, bgMusic.duration); // Set initial fill
         };
 
         if (bgMusic.readyState >= 1) {
@@ -110,9 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
             bgMusic.addEventListener('loadedmetadata', initDuration);
         }
 
+        // Update the slider as the song plays naturally
         bgMusic.addEventListener('timeupdate', () => {
             progressSlider.value = Math.floor(bgMusic.currentTime);
             currentTimeEl.textContent = formatTime(bgMusic.currentTime);
+            updateProgressFill(bgMusic.currentTime, bgMusic.duration);
         });
     }
 
@@ -156,5 +167,31 @@ document.addEventListener('DOMContentLoaded', () => {
         particle.addEventListener('animationend', () => particle.remove());
     }
 
-    setInterval(createSnowParticle, 50);
+    // --- 6. Tab Visibility Logic ---
+    let snowInterval;
+
+    // Function to start the snowstorm
+    function startSnow() {
+        if (!snowInterval) {
+            snowInterval = setInterval(createSnowParticle, 50);
+        }
+    }
+
+    // Function to pause the snowstorm
+    function stopSnow() {
+        clearInterval(snowInterval);
+        snowInterval = null;
+    }
+
+    // Start the snow when the page first loads
+    startSnow();
+
+    // Listen for the user switching tabs or minimizing the browser
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            stopSnow(); // Pause when tab is inactive
+        } else {
+            startSnow(); // Resume when they come back
+        }
+    });
 });

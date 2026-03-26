@@ -199,17 +199,38 @@ body {
     color: var(--text-muted);
 }
 
-/* Basic Progress Slider (Unstyled) */
+/* --- Custom Progress Slider (Timeline) --- */
 .progress-slider {
     flex-grow: 1;
     height: 4px;
     -webkit-appearance: none;
     appearance: none;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.2); /* Base empty track color */
     border-radius: 2px;
     cursor: default;
-    accent-color: var(--neon-blue);
-    pointer-events: none;
+    pointer-events: none; /* strictly prevents clicking or dragging */
+    outline: none;
+}
+
+/* Make the dot (thumb) completely invisible */
+.progress-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+/* Firefox Support */
+.progress-slider::-moz-range-thumb {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    border: none;
+}
+
+.track-progress:hover .progress-slider::-moz-range-thumb {
+    opacity: 1;
 }
 
 /* --- Music Player Controls --- */
