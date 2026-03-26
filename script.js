@@ -1,35 +1,48 @@
-document.getElementById('enter-screen').addEventListener('click', function() {
-    // 1. Fade out the overlay
-    this.style.opacity = '0';
-    setTimeout(() => {
-        this.style.display = 'none';
-    }, 500); // Waits for the CSS transition to finish
-
-    // 2. Play the background music
-    const audio = document.getElementById('bg-music');
-    audio.volume = 0.4; // Sets volume to 40% so it isn't deafening
-    audio.play().catch(error => {
-        console.log("Audio playback was blocked or failed:", error);
-    });
-
-    // 3. Reveal the main content card
-    const mainContent = document.getElementById('main-content');
-    mainContent.classList.remove('hidden');
-});
-
+// Wrap everything in DOMContentLoaded to ensure HTML loads before JS runs
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- DOM Elements Caching ---
+    // Caching elements here saves the browser from searching for them multiple times
+    const enterScreen = document.getElementById('enter-screen');
+    const mainContent = document.getElementById('main-content');
     const bgMusic = document.getElementById('bg-music');
+    
     const playPauseBtn = document.getElementById('play-pause-btn');
     const playIcon = document.getElementById('play-icon');
     const pauseIcon = document.getElementById('pause-icon');
+    
     const volumeSlider = document.getElementById('volume-slider');
+    const volumeIcon = document.getElementById('volume-icon');
+    const volumeMutedIcon = document.getElementById('volume-muted-icon');
+    
+    const progressSlider = document.getElementById('progress-slider');
+    const currentTimeEl = document.getElementById('current-time');
+    const totalTimeEl = document.getElementById('total-time');
 
-    // Sync initial volume
-    if (bgMusic && volumeSlider) {
-        bgMusic.volume = volumeSlider.value;
-    }
 
-    // Toggle play/pause
+    // --- 1. Initialization / Enter Screen ---
+    enterScreen?.addEventListener('click', () => {
+        // Fade out overlay
+        enterScreen.style.opacity = '0';
+        setTimeout(() => { enterScreen.style.display = 'none'; }, 500);
+
+        // Start Music
+        bgMusic.volume = volumeSlider ? volumeSlider.value : 0.4;
+        bgMusic.play().catch(err => console.log("Audio blocked:", err));
+
+        // Update UI Icons
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = 'block';
+
+        // Reveal Main Card
+        mainContent.classList.remove('hidden');
+    });
+
+
+    // --- 2. Audio Player Logic ---
+    let previousVolume = 0.5;
+
+    // Play/Pause Toggle
     playPauseBtn?.addEventListener('click', () => {
         if (bgMusic.paused) {
             bgMusic.play();
@@ -42,44 +55,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle volume adjustment
+    // Mute/Unmute Logic
+    const toggleMute = () => {
+        if (bgMusic.volume > 0) {
+            previousVolume = bgMusic.volume;
+            bgMusic.volume = 0;
+            volumeSlider.value = 0;
+            volumeIcon.style.display = 'none';
+            volumeMutedIcon.style.display = 'block';
+        } else {
+            const newVolume = previousVolume > 0 ? previousVolume : 0.5;
+            bgMusic.volume = newVolume;
+            volumeSlider.value = newVolume;
+            volumeMutedIcon.style.display = 'none';
+            volumeIcon.style.display = 'block';
+        }
+    };
+
+    volumeIcon?.addEventListener('click', toggleMute);
+    volumeMutedIcon?.addEventListener('click', toggleMute);
+
+    // Volume Slider Drag
     volumeSlider?.addEventListener('input', (e) => {
-        bgMusic.volume = e.target.value;
-    });
-
-    // Don't forget: Update your existing enter screen logic 
-    // to toggle these icons appropriately if the music auto-plays on enter!
-    const enterScreen = document.getElementById('enter-screen');
-    enterScreen?.addEventListener('click', () => {
-        playIcon.style.display = 'none';
-        pauseIcon.style.display = 'block';
-    });
-
-        // --- 1. Parallax Cursor Effect ---
-    const mainContent = document.getElementById('main-content');
-    
-    document.addEventListener('mousemove', (e) => {
-        if (!mainContent || mainContent.classList.contains('hidden')) return;
+        const currentVal = parseFloat(e.target.value);
+        bgMusic.volume = currentVal;
         
-        // Calculate tilt angles based on cursor position relative to window center
-        const xAxis = (window.innerWidth / 2 - e.pageX) / 100;
-        const yAxis = (window.innerHeight / 2 - e.pageY) / 100;
-        
-        mainContent.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        if (currentVal === 0) {
+            volumeIcon.style.display = 'none';
+            volumeMutedIcon.style.display = 'block';
+        } else {
+            volumeMutedIcon.style.display = 'none';
+            volumeIcon.style.display = 'block';
+            previousVolume = currentVal;
+        }
     });
 
-    // Reset rotation when the mouse leaves the page entirely
-    document.addEventListener('mouseleave', () => {
-        if (mainContent) mainContent.style.transform = `rotateY(0deg) rotateX(0deg)`;
-    });
-
-
-    // --- 2. Track Duration Logic ---
-    const progressSlider = document.getElementById('progress-slider');
-    const currentTimeEl = document.getElementById('current-time');
-    const totalTimeEl = document.getElementById('total-time');
-    
-    // Helper format function (e.g., 85 seconds -> "1:25")
+    // --- 3. Track Duration & Progress ---
     const formatTime = (time) => {
         if (isNaN(time)) return '0:00';
         const minutes = Math.floor(time / 60);
@@ -93,19 +104,57 @@ document.addEventListener('DOMContentLoaded', () => {
             totalTimeEl.textContent = formatTime(bgMusic.duration);
         };
 
-        // Initialize total duration once metadata loads or if already preloaded
         if (bgMusic.readyState >= 1) {
             initDuration();
         } else {
             bgMusic.addEventListener('loadedmetadata', initDuration);
         }
 
-        // Update progress bar as song plays
         bgMusic.addEventListener('timeupdate', () => {
             progressSlider.value = Math.floor(bgMusic.currentTime);
             currentTimeEl.textContent = formatTime(bgMusic.currentTime);
         });
-
     }
 
+    // --- 4. Optimized Parallax Effect ---
+    let isTicking = false; // Used to prevent animation frame spam
+
+    document.addEventListener('mousemove', (e) => {
+        if (!mainContent || mainContent.classList.contains('hidden')) return;
+        
+        // requestAnimationFrame optimizes performance by syncing with monitor refresh rate
+        if (!isTicking) {
+            window.requestAnimationFrame(() => {
+                const xAxis = (window.innerWidth / 2 - e.pageX) / 100;
+                const yAxis = (window.innerHeight / 2 - e.pageY) / 100;
+                mainContent.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+
+                const bgMoveX = (window.innerWidth / 2 - e.pageX) / 50; 
+                const bgMoveY = (window.innerHeight / 2 - e.pageY) / 50;
+                document.body.style.backgroundPosition = `calc(50% + ${bgMoveX}px) calc(50% + ${bgMoveY}px)`;
+                
+                isTicking = false;
+            });
+            isTicking = true;
+        }
+    });
+
+    document.addEventListener('mouseleave', () => {
+        if (mainContent) mainContent.style.transform = `rotateY(0deg) rotateX(0deg)`;
+        document.body.style.backgroundPosition = ''; 
+    });
+
+    // --- 5. Wind-Blown Snow Particles ---
+    function createSnowParticle() {
+        const particle = document.createElement('div');
+        particle.classList.add('snow-particle');
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.animationDuration = Math.random() * 3 + 2 + 's'; // Random duration
+        particle.style.opacity = Math.random(); // Random opacity
+        document.body.appendChild(particle);
+
+        particle.addEventListener('animationend', () => particle.remove());
+    }
+
+    setInterval(createSnowParticle, 50);
 });
